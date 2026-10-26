@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Gerencial de Metas | DF Pneus</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%232563eb'/><stop offset='100%' stop-color='%2322c55e'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><text x='16' y='22' font-family='system-ui, sans-serif' font-weight='900' font-size='16' fill='%23ffffff' text-anchor='middle'>DF</text></svg>">
+<link rel="stylesheet" href="./dashboard.css">
+<script src="./dashboard.js" defer></script>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-icon">DF</div>
+            <div>
+                <strong>DF PNEUS</strong>
+                <small>Gestão de Metas</small>
+            </div>
+        </div>
+
+        <div class="nav-title">Painel</div>
+        <nav class="nav">
+            <button class="active">▦ Dashboard Interativo</button>
+            <button onclick="rolarParaConfig()">⚙ Configurar Metas</button>
+            <button onclick="rolarParaLancamento()">✎ Lançamentos Diários</button>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="container">
+            <header class="header">
+                <div>
+                    <div class="eyebrow">PAINEL GERENCIAL • FILIAL 19</div>
+                    <h1>Meta de <span class="green">Lucro & Atendimentos</span></h1>
+                    <p id="subtituloPeriodo">Período: carregando...</p>
+                    <div id="statusRagBadge" class="rag-badge rag-green">🟢 NO RITMO</div>
+                </div>
+
+                <div class="header-actions">
+                    <button class="btn btn-theme" id="btnTema" onclick="alternarTema()">🌙 Tema Escuro</button>
+                    <button class="btn btn-secondary" onclick="imprimirRelatorio()">🖨️ Relatório PDF</button>
+                    <button class="btn btn-secondary" onclick="exportarJSON()">📥 Backup JSON</button>
+                    <button class="btn btn-secondary" onclick="importarJSON()">📤 Restaurar JSON</button>
+                    <button class="btn" onclick="exportarCSV()">↓ Exportar CSV</button>
+                    <button class="btn btn-primary" onclick="rolarParaLancamento()">+ Novo Lançamento</button>
+                    <input type="file" id="inputImportarJSON" accept=".json" style="display:none" onchange="processarImportacaoJSON(event)">
+                </div>
+            </header>
+
+            <section class="card" id="configSection" style="margin-bottom: 20px;">
+                <div class="panel-title">
+                    <h2>⚙ Configurações e Filtro de Período</h2>
+                    <span>O ciclo da meta sempre fecha do dia 26 ao dia 25</span>
+                </div>
+
+                <div class="grid config-grid">
+                    <div class="field">
+                        <label>META DE LUCRO (R$)</label>
+                        <input type="text" inputmode="decimal" id="inputMetaLucro" value="70000" oninput="salvarEAtualizar()">
+                    </div>
+
+                    <div class="field">
+                        <label>META DE VEÍCULOS (MÊS)</label>
+                        <input type="text" inputmode="numeric" id="inputMetaVeiculos" value="125" oninput="salvarEAtualizar()">
+                    </div>
+
+                    <div class="field field-destaque">
+                        <label>MÊS DE REFERÊNCIA</label>
+                        <div class="input-icon-wrap">
+                            <input type="month" id="inputMesReferencia" onchange="salvarEAtualizar()">
+                            <span class="input-calendar-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="field-subtext">
+                            Filtre aqui o mês de fechamento da meta. Ex.: <strong>out/2026</strong> considera <strong>26/09/2026 a 25/10/2026</strong>.
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>FERIADOS NO PERÍODO (DIAS)</label>
+                        <input type="text" inputmode="numeric" id="inputFeriados" value="1" oninput="salvarEAtualizar()">
+                    </div>
+
+                    <div class="field">
+                        <label>DATA INICIAL DO CICLO</label>
+                        <div class="input-icon-wrap">
+                            <input type="date" id="inputDataInicio" readonly>
+                            <span class="input-calendar-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>DATA FINAL DO CICLO</label>
+                        <div class="input-icon-wrap">
+                            <input type="date" id="inputDataFim" readonly>
+                            <span class="input-calendar-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>MARGEM ESTIMADA PARA VENDAS (%)</label>
+                        <input type="text" inputmode="decimal" id="inputMargemBase" value="42" oninput="salvarEAtualizar()">
+                        <div class="field-subtext">
+                            Venda Estimada: R$ <span id="vendasEstimadasConfig">166.666,67</span>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>STATUS DO CICLO</label>
+                        <input type="text" id="descricaoPeriodoCiclo" readonly>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid kpi-grid">
+                <div class="card kpi">
+                    <div class="kpi-label">META DE LUCRO</div>
+                    <div class="kpi-value">R$ <span id="metaKpi">70.000,00</span></div>
+                    <div class="kpi-sub">Objetivo do período</div>
+                </div>
+
+                <div class="card kpi blue">
+                    <div class="kpi-label">LUCRO REALIZADO</div>
+                    <div class="kpi-value green">R$ <span id="lucroKpi">0,00</span></div>
+                    <div class="kpi-sub">Soma dos lançamentos do ciclo</div>
+                </div>
+
+                <div class="card kpi orange">
+                    <div class="kpi-label">LUCRO RESTANTE</div>
+                    <div class="kpi-value orange-text">R$ <span id="faltanteKpi">0,00</span></div>
+                    <div class="kpi-sub">Valor necessário para atingir meta</div>
+                </div>
+
+                <div class="card kpi purple">
+                    <div class="kpi-label">LUCRO DIÁRIO NECESSÁRIO</div>
+                    <div class="kpi-value purple-text">R$ <span id="metaDiariaKpi">0,00</span></div>
+                    <div class="kpi-sub" id="subtituloDiasRestantes">Calculando...</div>
+                </div>
+            </section>
+
+            <section class="grid kpi-grid">
+                <div class="card kpi cyan">
+                    <div class="kpi-label">META DE VEÍCULOS (MÊS)</div>
+                    <div class="kpi-value cyan-text"><span id="metaVeiculosKpi">125</span> un.</div>
+                    <div class="kpi-sub">Meta total do mês</div>
+                </div>
+
+                <div class="card kpi blue">
+                    <div class="kpi-label">VEÍCULOS ATENDIDOS</div>
+                    <div class="kpi-value green"><span id="veiculosRealizadosKpi">0</span> un.</div>
+                    <div class="kpi-sub">Total acumulado no período</div>
+                </div>
+
+                <div class="card kpi orange">
+                    <div class="kpi-label">VEÍCULOS FALTANTES</div>
+                    <div class="kpi-value orange-text"><span id="veiculosFaltantesKpi">125</span> un.</div>
+                    <div class="kpi-sub">Para atingir os 100%</div>
+                </div>
+
+                <div class="card kpi purple">
+                    <div class="kpi-label">VEÍCULOS / DIA ÚTIL RESTANTE</div>
+                    <div class="kpi-value purple-text"><span id="veiculosDiaKpi">0,0</span> / dia</div>
+                    <div class="kpi-sub">Média para os dias úteis restantes</div>
+                </div>
+            </section>
+
+            <section class="grid kpi-grid">
+                <div class="card kpi green">
+                    <div class="kpi-label">LUCRO MÉDIO / VEÍCULO</div>
+                    <div class="kpi-value green">R$ <span id="lucroPorVeiculoKpi">0,00</span></div>
+                    <div class="kpi-sub" id="metaLucroPorVeiculoKpi">Meta planejada: R$ 0,00 / un.</div>
+                </div>
+
+                <div class="card kpi blue">
+                    <div class="kpi-label">TICKET MÉDIO (VENDA / VEÍCULO)</div>
+                    <div class="kpi-value blue-text">R$ <span id="ticketMedioVeiculoKpi">0,00</span></div>
+                    <div class="kpi-sub">Faturamento médio por atendimento</div>
+                </div>
+
+                <div class="card kpi orange">
+                    <div class="kpi-label">DESVIO DE LUCRO / VEÍCULO</div>
+                    <div class="kpi-value" id="diferencaLucroVeiculoKpi">R$ 0,00</div>
+                    <div class="kpi-sub">Variação vs Meta Planejada por Carro</div>
+                </div>
+
+                <div class="card kpi cyan">
+                    <div class="kpi-label">MARGEM MÉDIA POR ATENDIMENTO</div>
+                    <div class="kpi-value cyan-text"><span id="margemVeiculoKpi">0,00%</span></div>
+                    <div class="kpi-sub">Rentabilidade efetiva sobre as vendas</div>
+                </div>
+            </section>
+
+            <section class="card meta-card">
+                <div class="meta-head">
+                    <div>
+                        <h2>Progresso das Metas</h2>
+                        <span>Porcentagem do objetivo atingido</span>
+                    </div>
+                    <strong class="green" id="percentualMeta">0,00%</strong>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+
+                <div class="meta-footer">
+                    <div class="meta-stat">
+                        <small>Dias Úteis Totais (Seg-Sáb)</small>
+                        <strong id="diasUteisTotaisStat">0 dias</strong>
+                    </div>
+                    <div class="meta-stat">
+                        <small>Dias Úteis Decorridos</small>
+                        <strong id="diasUteisPassadosStat">0 dias</strong>
+                    </div>
+                    <div class="meta-stat">
+                        <small>Vendas Necessárias Restantes*</small>
+                        <strong class="blue-text">R$ <span id="vendasNecessarias">0,00</span></strong>
+                    </div>
+                    <div class="meta-stat">
+                        <small>Venda Diária Necessária</small>
+                        <strong class="green">R$ <span id="vendaDiariaNecessaria">0,00</span></strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid two-columns">
+                <div class="card">
+                    <div class="panel-title">
+                        <h2>Visão Geral de Performance</h2>
+                        <span>Comparativo dos dados do período</span>
+                    </div>
+                    <div class="chart" id="chart"></div>
+                </div>
+
+                <div class="card">
+                    <div class="panel-title">
+                        <h2>🏷️ Mix de Vendas</h2>
+                        <span>Distribuição de faturamento por segmento</span>
+                    </div>
+
+                    <div class="mix-item">
+                        <div class="mix-head">
+                            <strong>Oficina (Mão de Obra)</strong>
+                            <span id="percMixOficina">0,00%</span>
+                        </div>
+                        <div class="mix-line">
+                            <div class="mix-fill workshop" id="barMixOficina" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mix-item">
+                        <div class="mix-head">
+                            <strong>Peças</strong>
+                            <span id="percMixPecas">0,00%</span>
+                        </div>
+                        <div class="mix-line">
+                            <div class="mix-fill parts" id="barMixPecas" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mix-item">
+                        <div class="mix-head">
+                            <strong>Pneus</strong>
+                            <span id="percMixPneus">0,00%</span>
+                        </div>
+                        <div class="mix-line">
+                            <div class="mix-fill tires" id="barMixPneus" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="sim-result" style="margin-top: 15px;">
+                        <small>Segmento Dominante no Mês</small>
+                        <strong id="segmentoDominanteMix" style="font-size: 18px; color: #38bdf8;">Nenhum dado</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid two-columns">
+                <div class="card">
+                    <div class="panel-title">
+                        <h2>Simulador de Meta</h2>
+                        <span>Projeções de Margem</span>
+                    </div>
+
+                    <div class="field">
+                        <label>VENDA PROJETADA (R$)</label>
+                        <input id="simVenda" type="text" inputmode="decimal" value="100000" oninput="calcularSimulador()">
+                    </div>
+
+                    <div class="field">
+                        <label>MARGEM (%)</label>
+                        <input id="simMargem" type="text" inputmode="decimal" value="33.35" oninput="calcularSimulador()">
+                    </div>
+
+                    <div class="sim-result">
+                        <small>Lucro Estimado</small>
+                        <strong id="simLucro">R$ 33.350,00</strong>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="panel-title">
+                        <h2>Base de Rentabilidade por Categoria</h2>
+                        <span>Consolidado real dos lançamentos</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th>Vendas</th>
+                                    <th>Lucro</th>
+                                    <th>Margem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Oficina</strong></td>
+                                    <td id="vendaCatOficina">R$ 0,00</td>
+                                    <td class="green" id="lucroCatOficina">R$ 0,00</td>
+                                    <td><span class="badge badge-green" id="margemCatOficina">0,00%</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Peças</strong></td>
+                                    <td id="vendaCatPecas">R$ 0,00</td>
+                                    <td class="green" id="lucroCatPecas">R$ 0,00</td>
+                                    <td><span class="badge badge-orange" id="margemCatPecas">0,00%</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Pneus</strong></td>
+                                    <td id="vendaCatPneus">R$ 0,00</td>
+                                    <td class="green" id="lucroCatPneus">R$ 0,00</td>
+                                    <td><span class="badge badge-blue" id="margemCatPneus">0,00%</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="lancamentos">
+                <div class="panel-title">
+                    <div>
+                        <h2>Controle e Lançamento Diário</h2>
+                        <span id="resumoLancamentos">Exibindo lançamentos do período selecionado.</span>
+                    </div>
+                    <button class="btn-icon" id="btnToggleVisibilidade" onclick="alternarVisibilidadeLancamentos()" title="Mostrar/Ocultar Controle e Lançamento Diário">
+                        <span id="iconeOlho">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </span>
+                        <span id="textoOlho">Ocultar</span>
+                    </button>
+                </div>
+
+                <div id="conteudoLancamentos">
+                    <div class="launch-grid">
+                        <div class="field">
+                            <label>DATA</label>
+                            <input id="dataLancamento" type="date">
+                        </div>
+                        <div class="field">
+                            <label>CATEGORIA</label>
+                            <select id="categoriaLancamento">
+                                <option value="Oficina">Oficina (Serviços)</option>
+                                <option value="Peças">Peças</option>
+                                <option value="Pneus">Pneus</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>VENDA DO DIA (R$)</label>
+                            <input id="vendaLancamento" type="text" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div class="field">
+                            <label>LUCRO DO DIA (R$)</label>
+                            <input id="lucroLancamento" type="text" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div class="field">
+                            <label>VEÍCULOS ATENDIDOS</label>
+                            <input id="veiculosLancamento" type="text" inputmode="numeric" placeholder="Ex: 5">
+                        </div>
+                        <div class="launch-actions">
+                            <button class="btn btn-primary" id="btnAcaoLancamento" onclick="adicionarOuSalvarLancamento()">Adicionar</button>
+                            <button class="btn btn-secondary" id="btnCancelarEdicao" onclick="cancelarEdicao()" style="display:none">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap" style="margin-top: 25px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Categoria</th>
+                                    <th>Vendas (R$)</th>
+                                    <th>Lucro (R$)</th>
+                                    <th>Margem</th>
+                                    <th>Veículos</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaLancamentos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="footer">
+                <div>
+                    <strong>© 2026 Todos os direitos Reservados - F.X.C - Sistemas de Integração Inteligentes - v 1.0</strong>
+                </div>
+                <div class="footer-info">
+                    <a href="mailto:fxc@gmail.com" class="footer-link">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        fxc@gmail.com
+                    </a>
+                    <span>•</span>
+                    <a href="https://wa.me/5516992232770" target="_blank" rel="noreferrer" class="footer-link">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                        Fone: (16) 99223-2770
+                    </a>
+                </div>
+            </footer>
+        </div>
+    </main>
+</div>
+</body>
+</html>
