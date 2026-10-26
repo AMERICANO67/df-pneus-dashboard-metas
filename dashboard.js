@@ -35,8 +35,8 @@ function paraDataISO(data) {
 function gerarPeriodoPorMesReferencia(mesReferencia) {
     const valor = /^\d{4}-\d{2}$/.test(mesReferencia || "") ? mesReferencia : gerarMesReferenciaPadrao();
     const [ano, mes] = valor.split("-").map(Number);
-    const inicio = new Date(ano, mes - 2, 26);
-    const fim = new Date(ano, mes - 1, 25);
+    const inicio = new Date(ano, mes - 1, 26);
+    const fim = new Date(ano, mes, 25);
 
     return {
         mesReferencia: valor,
@@ -178,7 +178,7 @@ function alternarTema() {
 function atualizarResumoPeriodo(config) {
     $("subtituloPeriodo").textContent = `Período: ${formatarData(config.dataInicio)} até ${formatarData(config.dataFim)}`;
     $("descricaoPeriodoCiclo").textContent =
-        `Ciclo comercial ativo: ${formatarData(config.dataInicio)} a ${formatarData(config.dataFim)} (fechamento no dia 25).`;
+        `Ciclo comercial ativo: ${formatarData(config.dataInicio)} a ${formatarData(config.dataFim)}.`;
 }
 
 function sincronizarCamposConfiguracao(config) {
