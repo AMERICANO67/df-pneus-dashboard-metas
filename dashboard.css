@@ -530,6 +530,10 @@ html[data-theme="light"] .field select {
     padding-right: 42px;
 }
 
+.input-icon-wrap-button input {
+    padding-right: 48px;
+}
+
 .input-calendar-icon {
     position: absolute;
     right: 12px;
@@ -545,6 +549,33 @@ html[data-theme="light"] .field select {
 }
 
 .input-calendar-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.input-calendar-button {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.input-calendar-button:hover {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--text);
+}
+
+.input-calendar-button svg {
     width: 18px;
     height: 18px;
 }

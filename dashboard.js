@@ -93,6 +93,119 @@ function formatarData(dataStr) {
     return `${dia}/${mes}/${ano}`;
 }
 
+function normalizarTexto(texto) {
+    return String(texto || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+}
+
+function dividirLinhaCSV(linha, delimitador) {
+    const colunas = [];
+    let valorAtual = "";
+    let dentroDeAspas = false;
+
+    for (let indice = 0; indice < linha.length; indice += 1) {
+        const caractere = linha[indice];
+        const proximo = linha[indice + 1];
+
+        if (caractere === '"') {
+            if (dentroDeAspas && proximo === '"') {
+                valorAtual += '"';
+                indice += 1;
+            } else {
+                dentroDeAspas = !dentroDeAspas;
+            }
+            continue;
+        }
+
+        if (caractere === delimitador && !dentroDeAspas) {
+            colunas.push(valorAtual.trim());
+            valorAtual = "";
+            continue;
+        }
+
+        valorAtual += caractere;
+    }
+
+    colunas.push(valorAtual.trim());
+    return colunas;
+}
+
+function detectarDelimitadorCSV(linhaCabecalho) {
+    const candidatos = [";", ","];
+    const melhor = candidatos
+        .map((delimitador) => ({
+            delimitador,
+            total: dividirLinhaCSV(linhaCabecalho, delimitador).length
+        }))
+        .sort((a, b) => b.total - a.total)[0];
+
+    return melhor && melhor.total > 1 ? melhor.delimitador : ";";
+}
+
+function obterMapaCabecalhos(colunasCabecalho) {
+    const mapa = {};
+
+    colunasCabecalho.forEach((coluna, indice) => {
+        const chave = normalizarTexto(coluna);
+
+        if (["data", "dia", "date"].includes(chave)) {
+            mapa.data = indice;
+        } else if (["categoria", "tipo", "segmento", "category"].includes(chave)) {
+            mapa.categoria = indice;
+        } else if (["venda", "vendas", "valor", "faturamento", "vendas (r$)"].includes(chave)) {
+            mapa.venda = indice;
+        } else if (["lucro", "lucro (r$)", "resultado"].includes(chave)) {
+            mapa.lucro = indice;
+        } else if (["veiculos", "veiculo", "veiculos atendidos", "quantidade", "qtde"].includes(chave)) {
+            mapa.veiculos = indice;
+        }
+    });
+
+    return mapa;
+}
+
+function normalizarDataImportacao(valor) {
+    const texto = String(valor || "").trim();
+
+    if (!texto) {
+        return "";
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+        return texto;
+    }
+
+    const dataBR = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dataBR) {
+        const [, dia, mes, ano] = dataBR;
+        return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+    }
+
+    return "";
+}
+
+function normalizarCategoriaImportacao(valor) {
+    const texto = normalizarTexto(valor);
+
+    if (texto.includes("pneu")) {
+        return "Pneus";
+    }
+
+    if (texto.includes("peca")) {
+        return "Peças";
+    }
+
+    return "Oficina";
+}
+
+function obterDataLancamentoPadrao(config = obterConfiguracoes()) {
+    const hoje = obterDataHojeISO();
+    return hoje >= config.dataInicio && hoje <= config.dataFim ? hoje : config.dataInicio;
+}
+
 function normalizarConfiguracoes(configRecebida = {}) {
     const base = {
         ...DEFAULT_CONFIG,
@@ -201,6 +314,20 @@ function sincronizarCamposConfiguracao(config) {
     $("inputMesReferencia").value = config.mesReferencia;
     $("inputDataInicio").value = config.dataInicio;
     $("inputDataFim").value = config.dataFim;
+
+    const campoDataLancamento = $("dataLancamento");
+    if (campoDataLancamento) {
+        campoDataLancamento.min = config.dataInicio;
+        campoDataLancamento.max = config.dataFim;
+
+        if (!idEditando) {
+            const dataAtual = campoDataLancamento.value;
+            if (!dataAtual || dataAtual < config.dataInicio || dataAtual > config.dataFim) {
+                campoDataLancamento.value = obterDataLancamentoPadrao(config);
+            }
+        }
+    }
+
     atualizarResumoPeriodo(config);
 }
 
@@ -536,7 +663,7 @@ function prepararEdicao(id) {
 
 function cancelarEdicao() {
     idEditando = null;
-    $("dataLancamento").value = obterDataHojeISO();
+    $("dataLancamento").value = obterDataLancamentoPadrao();
     $("categoriaLancamento").value = "Oficina";
     $("vendaLancamento").value = "";
     $("lucroLancamento").value = "";
@@ -548,6 +675,21 @@ function cancelarEdicao() {
 function validarDataNoPeriodo(data) {
     const config = obterConfiguracoes();
     return data >= config.dataInicio && data <= config.dataFim;
+}
+
+function abrirCalendarioLancamento() {
+    const campo = $("dataLancamento");
+    if (!campo) {
+        return;
+    }
+
+    campo.focus();
+    if (typeof campo.showPicker === "function") {
+        campo.showPicker();
+        return;
+    }
+
+    campo.click();
 }
 
 function adicionarOuSalvarLancamento() {
@@ -676,6 +818,10 @@ function importarJSON() {
     $("inputImportarJSON").click();
 }
 
+function importarCSV() {
+    $("inputImportarCSV").click();
+}
+
 function processarImportacaoJSON(event) {
     const arquivo = event.target.files[0];
     if (!arquivo) {
@@ -708,6 +854,79 @@ function processarImportacaoJSON(event) {
     };
 
     leitor.readAsText(arquivo);
+}
+
+function processarImportacaoCSV(event) {
+    const arquivo = event.target.files[0];
+    if (!arquivo) {
+        return;
+    }
+
+    const leitor = new FileReader();
+    leitor.onload = (leitura) => {
+        try {
+            const conteudo = String(leitura.target.result || "")
+                .replace(/^\uFEFF/, "")
+                .replace(/\r/g, "");
+            const linhas = conteudo.split("\n").map((linha) => linha.trim()).filter(Boolean);
+
+            if (linhas.length < 2) {
+                alert("O CSV precisa ter cabeçalho e ao menos uma linha de dados.");
+                return;
+            }
+
+            const delimitador = detectarDelimitadorCSV(linhas[0]);
+            const cabecalho = dividirLinhaCSV(linhas[0], delimitador);
+            const mapa = obterMapaCabecalhos(cabecalho);
+
+            if (mapa.data === undefined || mapa.categoria === undefined) {
+                alert("CSV inválido. Use colunas como: Data, Categoria, Venda, Lucro e Veiculos.");
+                return;
+            }
+
+            const agora = Date.now();
+            const novosLancamentos = [];
+            let linhasIgnoradas = 0;
+
+            linhas.slice(1).forEach((linha, indice) => {
+                const colunas = dividirLinhaCSV(linha, delimitador);
+                const data = normalizarDataImportacao(colunas[mapa.data]);
+
+                if (!data) {
+                    linhasIgnoradas += 1;
+                    return;
+                }
+
+                novosLancamentos.push({
+                    id: agora + indice,
+                    data,
+                    categoria: normalizarCategoriaImportacao(colunas[mapa.categoria]),
+                    venda: parseNumeroBR(colunas[mapa.venda]),
+                    lucro: parseNumeroBR(colunas[mapa.lucro]),
+                    veiculos: parseNumeroBR(colunas[mapa.veiculos])
+                });
+            });
+
+            if (novosLancamentos.length === 0) {
+                alert("Nenhuma linha valida foi encontrada no CSV.");
+                return;
+            }
+
+            salvarLancamentos([...obterLancamentos(), ...novosLancamentos]);
+            renderizarLancamentos();
+            atualizarDashboard();
+
+            const resumoIgnoradas =
+                linhasIgnoradas > 0 ? ` ${linhasIgnoradas} linha(s) foram ignoradas por data invalida.` : "";
+            alert(`${novosLancamentos.length} lançamento(s) importado(s) com sucesso.${resumoIgnoradas}`);
+        } catch (error) {
+            alert("Erro ao importar CSV. Verifique o formato do arquivo.");
+        } finally {
+            event.target.value = "";
+        }
+    };
+
+    leitor.readAsText(arquivo, "utf-8");
 }
 
 function exportarCSV() {
@@ -747,7 +966,7 @@ document.addEventListener("DOMContentLoaded", () => {
     aplicarTema(obterTema());
     const config = obterConfiguracoes();
     sincronizarCamposConfiguracao(config);
-    $("dataLancamento").value = obterDataHojeISO();
+    $("dataLancamento").value = obterDataLancamentoPadrao(config);
     renderizarLancamentos();
     atualizarDashboard();
 });
